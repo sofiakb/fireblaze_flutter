@@ -71,6 +71,9 @@ class FirestoreRepository<T> {
   DocumentReference<Object?>? doc(String? docID, {bool cast = true}) =>
       docID == null || docID.isEmpty ? null : collection.doc(docID);
 
+  Future<bool> exists(String docID) async =>
+      (await collection.doc(docID).get()).exists == true;
+
   String id() => collection.doc().id;
 
   PreparedData prepareData(Map<String, dynamic> data) {
