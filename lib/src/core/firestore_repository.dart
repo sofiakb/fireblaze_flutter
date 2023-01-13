@@ -62,7 +62,7 @@ class FirestoreRepository<T> {
     return this;
   }
 
-  Future<T?>? find(String? docID, {bool cast = true}) async => docID == null ||
+  Future<T?> find(String? docID, {bool cast = true}) async => docID == null ||
           docID.isEmpty
       ? null
       : _cast(
@@ -94,7 +94,7 @@ class FirestoreRepository<T> {
             MapEntry(key, value is String && value.isEmpty ? null : value)));
   }
 
-  Future<T?>? store(dynamic data) async {
+  Future<T?> store(dynamic data) async {
     PreparedData prepared = prepareData(data);
     await prepared.documentReference.set(prepared.data);
 
@@ -116,7 +116,7 @@ class FirestoreRepository<T> {
     });
   }
 
-  Future<T?>? update(String docID, Map<String, dynamic> data,
+  Future<T?> update(String docID, Map<String, dynamic> data,
       {bool force = false}) async {
     if (docID.isEmpty) return null;
 
