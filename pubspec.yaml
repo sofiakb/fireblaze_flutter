@@ -11,3 +11,4 @@ dependencies:
   firebase_storage: ^11.0.10
   flutter:
     sdk: flutter
+  mime: ^1.0.4
