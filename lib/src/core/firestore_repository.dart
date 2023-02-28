@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:collection/collection.dart';
 
 import '../exceptions/empty_snapshot_exception.dart';
 import '../utils/chunk.dart';
@@ -211,7 +212,7 @@ class FirestoreRepository<T> {
     return this;
   }
 
-  Future<T?> first() async => (await this.limit(1).get()).first;
+  Future<T?> first() async => (await this.limit(1).get()).firstOrNull;
 
   Future<List<T?>> get() async {
     if (query == null) {
