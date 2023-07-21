@@ -12,3 +12,6 @@ dependencies:
   flutter:
     sdk: flutter
   mime: ^1.0.4
+
+scripts:
+  release: ./scripts/release.sh

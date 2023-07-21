@@ -28,9 +28,7 @@ class FirestoreRepository<T> {
 
   Future<List<T?>> all() {
     query = collection;
-    return softDeletes
-        ? this.where(column: "deletedAt", isNull: true).get()
-        : this.get();
+    return this.get();
   }
 
   FirestoreRepository<T> where({
@@ -270,7 +268,10 @@ class FirestoreRepository<T> {
     try {
       Query _query = query!;
 
-      var data = await _query.get();
+      var data = await (softDeletes
+              ? _query.where("deletedAt", isNull: true)
+              : _query)
+          .get();
       query = null;
       return _castAll(data.docs);
     } catch (e) {
