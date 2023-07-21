@@ -1,14 +1,17 @@
 name: sofiakb_fireblaze_flutter
 description: The packages allows to easily manage firebase requests.
 maintainer: Sofiane Akbly
-version: 1.0.0-beta.1
+version: 1.0.0-beta.3
 
 environment:
   sdk: ">=2.12.0 <3.0.0"
 
 dependencies:
-  cloud_firestore: ^4.3.1
-  firebase_storage: ^11.0.10
+  cloud_firestore: ^4.8.0
+  firebase_storage: ^11.2.2
   flutter:
     sdk: flutter
   mime: ^1.0.4
+
+scripts:
+  release: ./scripts/release.sh

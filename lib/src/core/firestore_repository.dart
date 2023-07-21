@@ -10,10 +10,14 @@ class FirestoreRepository<T> {
   CollectionReference collection;
   FirebaseFirestore instance = FirebaseFirestore.instance;
   Query? query;
+  bool softDeletes;
 
   T? Function(Map<String, Object?> json) casts;
 
-  FirestoreRepository({required this.collection, required this.casts});
+  FirestoreRepository(
+      {required this.collection,
+      required this.casts,
+      this.softDeletes = false});
 
   T? _cast(Map<String, dynamic>? item) => item == null ? null : casts(item);
 
@@ -63,14 +67,37 @@ class FirestoreRepository<T> {
     return this;
   }
 
-  Future<T?> find(String? docID, {bool cast = true}) async => docID == null ||
-          docID.isEmpty
-      ? null
-      : _cast(
-          (await collection.doc(docID).get()).data() as Map<String, dynamic>?);
+  Future<T?> find(String? docID, {bool cast = true}) async =>
+      docID?.isNotEmpty == true
+          ? _cast((await collection.doc(docID).get()).data()
+              as Map<String, dynamic>?)
+          : null;
 
-  DocumentReference<Object?>? doc(String? docID, {bool cast = true}) =>
-      docID == null || docID.isEmpty ? null : collection.doc(docID);
+  Future<T?> findOneByID(String? docID, {bool cast = true}) async =>
+      docID?.isNotEmpty == true
+          ? _cast((await collection.doc(docID).get()).data()
+              as Map<String, dynamic>?)
+          : null;
+
+  DocumentReference? documentReference(String? docID) =>
+      docID?.isNotEmpty == true ? collection.doc(docID) : null;
+
+  Future<T?> doc(String? docID,
+      {bool cast = true, bool withSoftDelete = false}) async {
+    if (docID?.isNotEmpty == false) return null;
+
+    return collection.doc(docID).get().then((value) {
+      DocumentSnapshot documentData = value;
+      return documentData.exists &&
+              softDeletes &&
+              (withSoftDelete == true ||
+                  (documentData.data()
+                          as Map<String, dynamic>?)?["deletedAt"] ==
+                      null)
+          ? _cast(value.data() as Map<String, dynamic>)
+          : null;
+    });
+  }
 
   Future<bool> exists(String docID) async =>
       (await collection.doc(docID).get()).exists == true;
@@ -82,6 +109,12 @@ class FirestoreRepository<T> {
 
     data['createdAt'] = toTimestamp(data['createdAt']);
     data['updatedAt'] = toTimestamp(data['updatedAt']);
+
+    if (softDeletes) {
+      data["deletedAt"] = data["deletedAt"] != null
+          ? toTimestamp(data["deletedAt"] ?? FirestoreRepository._now())
+          : null;
+    }
 
     DocumentReference documentReference = data['id'].toString().isNotEmpty
         ? collection.doc(data['id'])
@@ -121,7 +154,7 @@ class FirestoreRepository<T> {
       {bool force = false}) async {
     if (docID.isEmpty) return null;
 
-    DocumentReference? documentReference = this.doc(docID);
+    DocumentReference? documentReference = this.documentReference(docID);
 
     if (documentReference != null) {
       data['updatedAt'] = FirestoreRepository._now();
@@ -141,10 +174,23 @@ class FirestoreRepository<T> {
   Future<bool> delete(String? docID) async {
     if (docID == null || docID.isEmpty) return this._deleteWhere();
 
-    DocumentReference? documentReference = this.doc(docID);
+    DocumentReference? documentReference = this.documentReference(docID);
 
     if (documentReference != null) {
       await documentReference.delete();
+      return true;
+    }
+
+    return false;
+  }
+
+  Future<bool> softDelete(String? docID) async {
+    if (docID == null || docID.isEmpty) return this._deleteWhere();
+
+    DocumentReference? documentReference = this.documentReference(docID);
+
+    if (documentReference != null) {
+      await documentReference.update({"deletedAt": FirestoreRepository._now()});
       return true;
     }
 
@@ -222,7 +268,10 @@ class FirestoreRepository<T> {
     try {
       Query _query = query!;
 
-      var data = await _query.get();
+      var data = await (softDeletes
+              ? _query.where("deletedAt", isNull: true)
+              : _query)
+          .get();
       query = null;
       return _castAll(data.docs);
     } catch (e) {
