@@ -140,7 +140,6 @@ class FirestoreRepository<T> {
     await prepared.documentReference.set(
         prepared.data,
         SetOptions(
-            merge: true,
             mergeFields: prepared.data.keys
                 .toList()
                 .whereNot((element) => element == "createdAt")
