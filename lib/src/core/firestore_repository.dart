@@ -135,6 +135,21 @@ class FirestoreRepository<T> {
     return _cast(prepared.data);
   }
 
+  Future<T?> updateOrCreate(dynamic data) async {
+    PreparedData prepared = prepareData(data);
+    await prepared.documentReference.set(
+        prepared.data,
+        SetOptions(
+            merge: true,
+            mergeFields: prepared.data.keys
+                .toList()
+                .whereNot((element) => element == "createdAt")
+                .whereType<String>()
+                .toList()));
+
+    return _cast(prepared.data);
+  }
+
   storeMultiple(List values) async {
     List chunkValues = chunk(values, 500);
 
@@ -268,10 +283,9 @@ class FirestoreRepository<T> {
     try {
       Query _query = query!;
 
-      var data = await (softDeletes
-              ? _query.where("deletedAt", isNull: true)
-              : _query)
-          .get();
+      var data =
+          await (softDeletes ? _query.where("deletedAt", isNull: true) : _query)
+              .get();
       query = null;
       return _castAll(data.docs);
     } catch (e) {
