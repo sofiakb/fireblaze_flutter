@@ -137,14 +137,20 @@ class FirestoreRepository<T> {
 
   Future<T?> updateOrCreate(dynamic data) async {
     PreparedData prepared = prepareData(data);
-    await prepared.documentReference.set(
-        prepared.data,
-        SetOptions(
-            mergeFields: prepared.data.keys
-                .toList()
-                .whereNot((element) => element == "createdAt")
-                .whereType<String>()
-                .toList()));
+
+    await update(prepared.documentReference.id, prepared.data)
+        .onError((error, stackTrace) async {
+      await store(data);
+    });
+
+    // await prepared.documentReference.set(
+    //     prepared.data,
+    //     SetOptions(
+    //         mergeFields: prepared.data.keys
+    //             .toList()
+    //             .whereNot((element) => element == "createdAt")
+    //             .whereType<String>()
+    //             .toList()));
 
     return _cast(prepared.data);
   }
