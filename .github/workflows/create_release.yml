@@ -73,7 +73,7 @@ jobs:
           git commit -m "Release ${{ needs.generate.outputs.gitTag }}"
           git push origin ${{ needs.generate.outputs.gitTag }}
           git checkout -
-          git stash) 
+          git stash) || true 
 
       # https://github.com/marketplace/actions/github-pull-request-action
       - name: Create PR release -> main
