@@ -1,6 +1,6 @@
-class FireblazeCachePrepare {
-  Future<void> Function() action;
-  Future<void> Function() reverseAction;
+class FireblazeCachePrepare<T> {
+  T? data;
+  Future<void> Function(dynamic)? action;
 
-  FireblazeCachePrepare({required this.action, required this.reverseAction});
+  FireblazeCachePrepare({required this.data, required this.action});
 }

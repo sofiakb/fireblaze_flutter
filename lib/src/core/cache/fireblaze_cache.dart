@@ -1,5 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
+import 'package:localstorage/localstorage.dart';
 
 import 'fireblaze_cache_prepare.dart';
 import 'fireblaze_cache_settings.dart';
@@ -14,6 +13,7 @@ class FireblazeCache {
   FireblazeCache._internal();
 
   final Map<String, FireblazeCacheSettings> caches = {};
+  final LocalStorage storage = LocalStorage("fireblaze_cache");
 
   void add(String key, [FireblazeCacheSettings? settings]) {
     caches[key] = settings ?? FireblazeCacheSettings();
@@ -29,29 +29,38 @@ class FireblazeCache {
 
   Stream<T> snapshots<T>(String key,
       {required Stream<T> Function() callback, bool refresh = false}) async* {
-    FireblazeCachePrepare prepare = _prepare(key, refresh: refresh);
-    Future<void> Function() action = prepare.action;
-    Future<void> Function() reverseAction = prepare.reverseAction;
+    FireblazeCachePrepare prepare = await _prepare<T>(key, refresh: refresh);
+    Future<void> Function(dynamic)? action = prepare.action;
 
-    yield* await action().then((value) => callback().map((event) {
-          reverseAction();
-          return event;
-        }));
+    if (prepare.data != null) {
+      yield* prepare.data;
+    }
+
+    yield* await callback().map((event) {
+      if (action != null) action(event);
+      return event;
+    });
   }
 
   Future<T> get<T>(String key,
       {required Future<T> Function() callback, bool refresh = false}) async {
-    FireblazeCachePrepare prepare = _prepare(key, refresh: refresh);
-    Future<void> Function() action = prepare.action;
-    Future<void> Function() reverseAction = prepare.reverseAction;
+    FireblazeCachePrepare prepare = await _prepare<T>(key, refresh: refresh);
+    Future<void> Function(dynamic)? action = prepare.action;
 
-    return await action().then((value) => callback().then((data) {
-          reverseAction();
-          return data;
-        }));
+    if (prepare.data != null) {
+      return prepare.data;
+    }
+
+    return await callback().then((data) {
+      if (action != null) action(data);
+      return data;
+    });
   }
 
-  FireblazeCachePrepare _prepare(String key, {bool refresh = false}) {
+  Future<FireblazeCachePrepare> _prepare<T>(String key,
+      {bool refresh = false,
+      Map<String, dynamic> Function(dynamic)? toJson,
+      dynamic Function(dynamic)? fromJson}) async {
     if (!hasKey(key)) {
       add(key);
     }
@@ -60,27 +69,29 @@ class FireblazeCache {
       invalidate(key);
     }
 
-    Future<void> Function()? action;
-    Future<void> Function()? reverseAction;
+    T? data;
+    Future<void> Function(dynamic)? action;
+
+    await storage.ready;
 
     if (caches[key]?.latest == null ||
         DateTime.now().difference(caches[key]!.latest!) >
             caches[key]!.interval) {
       caches[key]!.latest = DateTime.now();
-      action = FirebaseFirestore.instance.enableNetwork;
-      reverseAction = FirebaseFirestore.instance.disableNetwork;
-    } else {
-      if (kIsWeb) {
-        FirebaseFirestore.instance.enablePersistence(
-            const PersistenceSettings(synchronizeTabs: true));
+
+      if (toJson != null || caches[key]!.toJson != null) {
+        action = (value) async => await storage.setItem(
+            key, toJson == null ? caches[key]!.toJson!(value) : toJson(value));
       }
-      FirebaseFirestore.instance.settings = const Settings(
-          persistenceEnabled: true,
-          cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED);
-      action = FirebaseFirestore.instance.disableNetwork;
-      reverseAction = FirebaseFirestore.instance.enableNetwork;
+    } else {
+      if (fromJson != null || caches[key]!.fromJson != null) {
+        var result = await storage.getItem(key);
+        data = fromJson == null
+            ? caches[key]!.fromJson!(result)
+            : fromJson(result);
+      }
     }
 
-    return FireblazeCachePrepare(action: action, reverseAction: reverseAction);
+    return FireblazeCachePrepare(action: action, data: data);
   }
 }
