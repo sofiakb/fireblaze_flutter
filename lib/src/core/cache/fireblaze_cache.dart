@@ -59,8 +59,8 @@ class FireblazeCache {
 
   Future<FireblazeCachePrepare> _prepare<T>(String key,
       {bool refresh = false,
-      dynamic Function(T)? toJson,
-      T? Function(dynamic)? fromJson}) async {
+      Function? toJson,
+      Function? fromJson}) async {
     if (!hasKey(key)) {
       add(key);
     }
