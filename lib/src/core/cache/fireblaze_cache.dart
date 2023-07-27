@@ -1,5 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:localstorage/localstorage.dart';
 
+import '../../utils/date.dart';
 import 'fireblaze_cache_prepare.dart';
 import 'fireblaze_cache_settings.dart';
 
@@ -58,9 +60,7 @@ class FireblazeCache {
   }
 
   Future<FireblazeCachePrepare> _prepare<T>(String key,
-      {bool refresh = false,
-      Function? toJson,
-      Function? fromJson}) async {
+      {bool refresh = false, Function? toJson, Function? fromJson}) async {
     if (!hasKey(key)) {
       add(key);
     }
@@ -80,12 +80,31 @@ class FireblazeCache {
       caches[key]!.latest = DateTime.now();
 
       if (toJson != null || caches[key]!.toJson != null) {
-        action = (T value) async => await storage.setItem(
-            key, toJson == null ? caches[key]!.toJson!(value) : toJson(value));
+        action = (T value) async {
+          var json = toJson == null ? caches[key]!.toJson!(value) : toJson(value);
+
+          json.forEach((key, value) {
+            if (value is DateTime) {
+              json[key] = "DATECONV--" + toDateTimeStringDefault(value);
+            }
+            if (value is Timestamp) {
+              json[key] =
+                  "DATECONV--" + toDateTimeStringDefault(value.toDate());
+            }
+          });
+
+          await storage.setItem(
+            key, json);
+        };
       }
     } else {
       if (fromJson != null || caches[key]!.fromJson != null) {
-        var result = await storage.getItem(key);
+        Map<String, dynamic>? result = await storage.getItem(key);
+        result?.forEach((key, value) {
+          if (value?.toString().contains("DATECONV--") == true) {
+            result[key] = Timestamp.fromDate(fromDateTimeString(value!.toString().replaceAll("DATECONV--", "")));
+          }
+        });
         data = fromJson == null
             ? caches[key]!.fromJson!(result)
             : fromJson(result);
