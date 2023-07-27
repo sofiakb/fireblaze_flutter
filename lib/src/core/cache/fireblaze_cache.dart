@@ -30,7 +30,7 @@ class FireblazeCache {
   Stream<T> snapshots<T>(String key,
       {required Stream<T> Function() callback, bool refresh = false}) async* {
     FireblazeCachePrepare prepare = await _prepare<T>(key, refresh: refresh);
-    Future<void> Function(T)? action = prepare.action;
+    Function? action = prepare.action;
 
     if (prepare.data != null) {
       yield* prepare.data;
@@ -45,7 +45,7 @@ class FireblazeCache {
   Future<T> get<T>(String key,
       {required Future<T> Function() callback, bool refresh = false}) async {
     FireblazeCachePrepare prepare = await _prepare<T>(key, refresh: refresh);
-    Future<void> Function(T)? action = prepare.action;
+    Function? action = prepare.action;
 
     if (prepare.data != null) {
       return prepare.data;
@@ -70,7 +70,7 @@ class FireblazeCache {
     }
 
     T? data;
-    Future<void> Function(T)? action;
+    Function? action;
 
     await storage.ready;
 
