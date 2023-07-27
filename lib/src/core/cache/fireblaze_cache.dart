@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:localstorage/localstorage.dart';
 
@@ -81,20 +83,43 @@ class FireblazeCache {
 
       if (toJson != null || caches[key]!.toJson != null) {
         action = (T value) async {
+          print("--------------------");
+          print(value);
           var json = toJson == null ? caches[key]!.toJson!(value) : toJson(value);
 
-          json.forEach((key, value) {
-            if (value is DateTime) {
-              json[key] = "DATECONV--" + toDateTimeStringDefault(value);
-            }
-            if (value is Timestamp) {
-              json[key] =
-                  "DATECONV--" + toDateTimeStringDefault(value.toDate());
-            }
-          });
+          _convertDates(Map json) {
+            json.forEach((key, value) {
+              print("je suis la");
+              if (value is DateTime) {
+                print("je suis la 2");
+                json[key] = "DATECONV--" + toDateTimeStringDefault(value);
+                print("je suis la 3");
+              }
+              else if (value is Timestamp) {
+                print("je suis la 4");
+                json[key] =
+                    "DATECONV--" + toDateTimeStringDefault(value.toDate());
+                print("je suis la 5");
+              }
+              else  if (value is Map){
+                json[key] = _convertDates(json[key]);
+                print("je suis la 6");
+              }
+            });
+            return json;
+          }
+
+          if (json is List) {
+            json = json.map((e) => _convertDates(e)).toList();
+          } else {
+            json = _convertDates(json);
+          }
+          print(jsonEncode(json));
+
+
 
           await storage.setItem(
-            key, json);
+              key, json);
         };
       }
     } else {
