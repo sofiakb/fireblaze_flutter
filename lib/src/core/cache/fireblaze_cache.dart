@@ -92,6 +92,6 @@ class FireblazeCache {
       }
     }
 
-    return FireblazeCachePrepare(action: action, data: data);
+    return FireblazeCachePrepare<T>(action: action, data: data);
   }
 }
