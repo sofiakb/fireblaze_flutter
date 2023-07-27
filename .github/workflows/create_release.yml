@@ -69,7 +69,7 @@ jobs:
           git config --global user.name "[Automated] Sofiakb"
 
           git checkout -B ${{ needs.generate.outputs.gitTag }}
-          git add -A
+          git add pubspec.yaml
           git commit -m "Release ${{ needs.generate.outputs.gitTag }}"
           git push origin ${{ needs.generate.outputs.gitTag }}
           git checkout -

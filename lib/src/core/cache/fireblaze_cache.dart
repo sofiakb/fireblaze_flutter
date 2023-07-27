@@ -30,7 +30,7 @@ class FireblazeCache {
   Stream<T> snapshots<T>(String key,
       {required Stream<T> Function() callback, bool refresh = false}) async* {
     FireblazeCachePrepare prepare = await _prepare<T>(key, refresh: refresh);
-    Future<void> Function(dynamic)? action = prepare.action;
+    Future<void> Function(T)? action = prepare.action;
 
     if (prepare.data != null) {
       yield* prepare.data;
@@ -45,7 +45,7 @@ class FireblazeCache {
   Future<T> get<T>(String key,
       {required Future<T> Function() callback, bool refresh = false}) async {
     FireblazeCachePrepare prepare = await _prepare<T>(key, refresh: refresh);
-    Future<void> Function(dynamic)? action = prepare.action;
+    Future<void> Function(T)? action = prepare.action;
 
     if (prepare.data != null) {
       return prepare.data;
@@ -59,7 +59,7 @@ class FireblazeCache {
 
   Future<FireblazeCachePrepare> _prepare<T>(String key,
       {bool refresh = false,
-      dynamic Function(dynamic)? toJson,
+      dynamic Function(T)? toJson,
       T? Function(dynamic)? fromJson}) async {
     if (!hasKey(key)) {
       add(key);
@@ -70,7 +70,7 @@ class FireblazeCache {
     }
 
     T? data;
-    Future<void> Function(dynamic)? action;
+    Future<void> Function(T)? action;
 
     await storage.ready;
 
@@ -80,7 +80,7 @@ class FireblazeCache {
       caches[key]!.latest = DateTime.now();
 
       if (toJson != null || caches[key]!.toJson != null) {
-        action = (value) async => await storage.setItem(
+        action = (T value) async => await storage.setItem(
             key, toJson == null ? caches[key]!.toJson!(value) : toJson(value));
       }
     } else {
