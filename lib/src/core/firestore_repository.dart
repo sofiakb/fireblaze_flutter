@@ -141,6 +141,7 @@ class FirestoreRepository<T> {
     await update(prepared.documentReference.id, prepared.data)
         .onError((error, stackTrace) async {
       await store(data);
+      return null;
     });
 
     // await prepared.documentReference.set(
