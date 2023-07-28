@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:localstorage/localstorage.dart';
@@ -102,8 +103,11 @@ class FireblazeCache {
               } else if (value is Timestamp) {
                 json[key] =
                     "DATECONV--" + toDateTimeStringDefault(value.toDate());
-              } else if (value is Map) {
-                json[key] = _convertDates(json[key]);
+              } else if (value is Map<String, dynamic>) {
+                json[key] = _convertDates(value);
+              }
+              else if (value is List<Map<String, dynamic>>) {
+                json[key] = value.map((e) => _convertDates(e)).toList();
               }
             });
             return json;
@@ -115,7 +119,9 @@ class FireblazeCache {
             json = _convertDates(json);
           }
 
-          await storage.setItem(key, json);
+          await storage.setItem(key, json).catchError((e) {
+            log(e.toString());
+          });
         };
       }
     } else {
@@ -125,8 +131,10 @@ class FireblazeCache {
         _reconvertDates(Map<String, dynamic>? json) {
           if (json == null) return null;
           json.forEach((key, value) {
-            if (value is Map) {
-              json[key] = _reconvertDates(json[key]);
+            if (value is List<Map<String, dynamic>>) {
+              json[key] = value.map((e) => _reconvertDates(e)).toList();
+            } else if (value is Map<String, dynamic>) {
+              json[key] = _reconvertDates(value);
             } else if (value?.toString().contains("DATECONV--") == true) {
               json[key] = Timestamp.fromDate(fromDateTimeString(
                   value!.toString().replaceAll("DATECONV--", "")));
@@ -141,9 +149,11 @@ class FireblazeCache {
           result = _reconvertDates(result);
         }
 
-        data = fromJson == null
-            ? caches[key]!.fromJson!(result)
-            : fromJson(result);
+        data = result == null
+            ? null
+            : fromJson == null
+                ? caches[key]!.fromJson!(result)
+                : fromJson(result);
       }
     }
 
