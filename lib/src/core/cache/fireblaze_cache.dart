@@ -34,8 +34,9 @@ class FireblazeCache {
     return caches.containsKey(key);
   }
 
-  void invalidate(String key) {
+  Future<void> invalidate(String key) async {
     caches[key]?.latest = null;
+    await storage.deleteItem(key);
   }
 
   Stream<T> snapshots<T>(String key,
@@ -77,14 +78,13 @@ class FireblazeCache {
       add(key);
     }
 
+    await storage.ready;
     if (refresh) {
-      invalidate(key);
+      await invalidate(key);
     }
 
     T? data;
     Function? action;
-
-    await storage.ready;
 
     if (caches[key]?.latest == null ||
         DateTime.now().difference(caches[key]!.latest!) >
@@ -105,8 +105,7 @@ class FireblazeCache {
                     "DATECONV--" + toDateTimeStringDefault(value.toDate());
               } else if (value is Map<String, dynamic>) {
                 json[key] = _convertDates(value);
-              }
-              else if (value is List<Map<String, dynamic>>) {
+              } else if (value is List<Map<String, dynamic>>) {
                 json[key] = value.map((e) => _convertDates(e)).toList();
               }
             });
@@ -131,7 +130,7 @@ class FireblazeCache {
         _reconvertDates(Map<String, dynamic>? json) {
           if (json == null) return null;
           json.forEach((key, value) {
-            if (value is List<Map<String, dynamic>>) {
+            if (value is List) {
               json[key] = value.map((e) => _reconvertDates(e)).toList();
             } else if (value is Map<String, dynamic>) {
               json[key] = _reconvertDates(value);
