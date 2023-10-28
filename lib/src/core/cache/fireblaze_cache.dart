@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:localstorage/localstorage.dart';
@@ -115,7 +116,13 @@ class FireblazeCache {
             json = _convertDates(json);
           }
 
-          await storage.setItem(key, json);
+          try {
+            await storage.setItem(key, json);
+          } catch (e, stackTrace) {
+            print(e);
+            print(stackTrace.toString());
+            log(json);
+          }
         };
       }
     } else {
