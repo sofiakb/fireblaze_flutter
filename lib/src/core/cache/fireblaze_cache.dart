@@ -104,6 +104,8 @@ class FireblazeCache {
                     "DATECONV--" + toDateTimeStringDefault(value.toDate());
               } else if (value is Map) {
                 json[key] = _convertDates(json[key]);
+              } else if (value is List) {
+                json[key] = json[key].map((m) => _convertDates(m)).toList();
               }
             });
             return json;
@@ -115,7 +117,12 @@ class FireblazeCache {
             json = _convertDates(json);
           }
 
-          await storage.setItem(key, json);
+          try {
+            await storage.setItem(key, json);
+          } catch (e, stackTrace) {
+            print(e.toString());
+            print(stackTrace.toString());
+          }
         };
       }
     } else {
@@ -127,6 +134,8 @@ class FireblazeCache {
           json.forEach((key, value) {
             if (value is Map) {
               json[key] = _reconvertDates(json[key]);
+            } else if (value is List) {
+              json[key] = json[key].map((m) => _reconvertDates(m)).toList();
             } else if (value?.toString().contains("DATECONV--") == true) {
               json[key] = Timestamp.fromDate(fromDateTimeString(
                   value!.toString().replaceAll("DATECONV--", "")));
