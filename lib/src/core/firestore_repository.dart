@@ -281,6 +281,11 @@ class FirestoreRepository<T> {
 
   Future<T?> first() async => (await this.limit(1).get()).firstOrNull;
 
+  queryHasParameter(String parameter) {
+    if (query == null) return false;
+    return query!.parameters.containsKey(parameter);
+  }
+
   Future<List<T?>> get() async {
     if (query == null) {
       return throw new EmptySnapshotException();
@@ -290,7 +295,7 @@ class FirestoreRepository<T> {
       Query _query = query!;
 
       var data =
-          await (softDeletes ? _query.where("deletedAt", isNull: true) : _query)
+          await (softDeletes && !queryHasParameter("deletedAt") ? _query.where("deletedAt", isNull: true) : _query)
               .get();
       query = null;
       return _castAll(data.docs);
