@@ -8,6 +8,7 @@ import 'prepared_data.dart';
 
 class FirestoreRepository<T> {
   CollectionReference collection;
+  CollectionReference? _collectionReference;
   FirebaseFirestore instance = FirebaseFirestore.instance;
   Query? query;
   bool softDeletes;
@@ -17,7 +18,9 @@ class FirestoreRepository<T> {
   FirestoreRepository(
       {required this.collection,
       required this.casts,
-      this.softDeletes = false});
+      this.softDeletes = false}) {
+    _collectionReference = collection;
+  }
 
   T? _cast(Map<String, dynamic>? item) => item == null ? null : casts(item);
 
@@ -297,8 +300,8 @@ class FirestoreRepository<T> {
       var data =
           await (softDeletes && !queryHasParameter("deletedAt") ? _query.where("deletedAt", isNull: true) : _query)
               .get();
-      query = null;
-      return _castAll(data.docs);
+reset();
+return _castAll(data.docs);
     } catch (e) {
       rethrow;
     }
@@ -313,11 +316,17 @@ class FirestoreRepository<T> {
       Query _query = query!;
 
       Stream<QuerySnapshot<Object?>> querySnapshot = _query.snapshots();
-      query = null;
-      return querySnapshot;
+reset();
+return querySnapshot;
     } catch (e) {
       rethrow;
     }
+  }
+
+  reset() {
+    query = null;
+    collection = _collectionReference!;
+    return this;
   }
 
   Query _query() => (this.query ?? this.collection);
