@@ -50,7 +50,7 @@ class FirestoreRepository<T> {
     List<Object?>? whereNotIn,
     bool? isNull,
   }) {
-    this.query = _query().where(
+    this.query = _query().where(Filter(
       column,
       isEqualTo: isEqualTo ?? (operator == '==' ? value : null),
       isNotEqualTo: isNotEqualTo ?? (operator == '!=' ? value : null),
@@ -65,7 +65,7 @@ class FirestoreRepository<T> {
       whereIn: whereIn,
       whereNotIn: whereNotIn,
       isNull: isNull,
-    );
+    ));
     //query(this.#snapshot ?? this.#collection, where(column, operator, value));
     return this;
   }
@@ -297,11 +297,12 @@ class FirestoreRepository<T> {
     try {
       Query _query = query!;
 
-      var data =
-          await (softDeletes && !queryHasParameter("deletedAt") ? _query.where("deletedAt", isNull: true) : _query)
-              .get();
-reset();
-return _castAll(data.docs);
+      var data = await (softDeletes && !queryHasParameter("deletedAt")
+              ? _query.where("deletedAt", isNull: true)
+              : _query)
+          .get();
+      reset();
+      return _castAll(data.docs);
     } catch (e) {
       rethrow;
     }
@@ -316,8 +317,8 @@ return _castAll(data.docs);
       Query _query = query!;
 
       Stream<QuerySnapshot<Object?>> querySnapshot = _query.snapshots();
-reset();
-return querySnapshot;
+      reset();
+      return querySnapshot;
     } catch (e) {
       rethrow;
     }
