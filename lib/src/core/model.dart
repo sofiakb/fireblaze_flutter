@@ -1,9 +1,9 @@
 class Model {
-  String? id;
+  final String? id;
 
-  DateTime? createdAt;
-  DateTime? updatedAt;
-  DateTime? deletedAt;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+  final DateTime? deletedAt;
 
-  Model({this.id, this.createdAt, this.updatedAt, this.deletedAt});
+  const Model({this.id, this.createdAt, this.updatedAt, this.deletedAt});
 }
