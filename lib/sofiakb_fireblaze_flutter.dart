@@ -6,3 +6,5 @@ export 'src/core/fireblaze_storage.dart';
 export 'src/core/cache/fireblaze_cache.dart';
 export 'src/core/cache/fireblaze_cache_prepare.dart';
 export 'src/core/cache/fireblaze_cache_settings.dart';
+
+export 'src/core/model.dart';
