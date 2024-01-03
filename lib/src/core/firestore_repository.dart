@@ -170,9 +170,6 @@ class FirestoreRepository<T extends Model> {
 
     DocumentReference? documentReference = this.documentReference(docID);
 
-    print("before update");
-    print((await documentReference?.get())?.data());
-
     if (documentReference != null) {
       data['updatedAt'] = FirestoreRepository._now();
       data.remove("createdAt");
@@ -185,8 +182,6 @@ class FirestoreRepository<T extends Model> {
       }
     }
 
-    print("after update");
-    print((await documentReference?.get())?.data());
 
     return this.find(docID);
   }
