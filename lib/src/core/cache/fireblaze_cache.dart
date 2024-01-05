@@ -1,9 +1,9 @@
 import 'dart:async';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 import 'package:localstorage/localstorage.dart';
+import 'package:sofiakb_fireblaze_flutter/src/utils/functions.dart';
 
-import '../../utils/date.dart';
 import 'fireblaze_cache_prepare.dart';
 import 'fireblaze_cache_settings.dart';
 
@@ -17,24 +17,83 @@ class FireblazeCache {
   FireblazeCache._internal();
 
   final Map<String, FireblazeCacheSettings> caches = {};
-  final LocalStorage storage = LocalStorage("fireblaze_cache");
 
   void add(String key, [FireblazeCacheSettings? settings]) {
-    if (caches[key] == null) {
-      caches[key] = settings ?? FireblazeCacheSettings();
-    } else {
-      DateTime? latest = caches[key]!.latest;
-      caches[key] = settings ?? FireblazeCacheSettings();
-      caches[key]!.latest = latest;
+    settings ??=
+        FireblazeCacheSettings(localStorage: LocalStorage("$prefix$key"));
+    caches[key] = caches[key] == null
+        ? settings
+        : settings.copyWith(
+            localStorage: caches[key]!.storage,
+            latest: caches[key]!.latest,
+          );
+  }
+
+  bool hasKey(String key) => caches.containsKey(key);
+
+  void invalidate(String key) => caches[key]?.latest = null;
+
+  Future<FireblazeCachePrepare> _prepare<T>(String key,
+      {bool refresh = false, Function? toJson, Function? fromJson}) async {
+    if (!hasKey(key)) {
+      add(key);
     }
-  }
 
-  bool hasKey(String key) {
-    return caches.containsKey(key);
-  }
+    if (refresh) {
+      invalidate(key);
+    }
 
-  void invalidate(String key) {
-    caches[key]?.latest = null;
+    T? data;
+    Function? action;
+
+    await caches[key]?.storage?.ready;
+
+    if (caches[key]?.latest == null ||
+        DateTime.now().difference(caches[key]!.latest!).inMinutes >
+            caches[key]!.interval.inMinutes) {
+      caches[key]!.latest = DateTime.now();
+
+      if (toJson != null || caches[key]!.toJson != null) {
+        action = (T value) async {
+          dynamic json =
+              toJson == null ? caches[key]?.toJson!(value) : toJson(value);
+
+          json = toEncodable(json);
+
+          try {
+            await caches[key]?.storage?.setItem(
+                key,
+                json,
+                (object) =>
+                    (object is Iterable
+                        ? object
+                            .map((e) => convertDates(e as Map<String, dynamic>))
+                            .toList()
+                        : convertDates(object as Map<String, dynamic>)) ??
+                    {});
+          } catch (e, stackTrace) {
+            debugPrint(e.toString());
+            debugPrintStack(stackTrace: stackTrace);
+          }
+        };
+      }
+    } else {
+      if (fromJson != null || caches[key]!.fromJson != null) {
+        dynamic result = await caches[key]?.storage?.getItem(key);
+
+        if (result is List) {
+          result = result.map((e) => reconvertDates(e)).toList();
+        } else {
+          result = reconvertDates(result);
+        }
+
+        data = fromJson == null
+            ? caches[key]!.fromJson!(result)
+            : fromJson(result);
+      }
+    }
+
+    return FireblazeCachePrepare<T>(action: action, data: data);
   }
 
   Stream<T> snapshots<T>(String key,
@@ -47,12 +106,12 @@ class FireblazeCache {
       controller.add(prepare.data);
 
       yield* controller.stream;
+    } else {
+      yield* callback().map((event) {
+        if (action != null) action(event);
+        return event;
+      });
     }
-
-    yield* await callback().map((event) {
-      if (action != null) action(event);
-      return event;
-    });
   }
 
   Future<T> get<T>(String key,
@@ -68,94 +127,5 @@ class FireblazeCache {
       if (action != null) action(data);
       return data;
     });
-  }
-
-  Future<FireblazeCachePrepare> _prepare<T>(String key,
-      {bool refresh = false, Function? toJson, Function? fromJson}) async {
-    if (!hasKey(key)) {
-      add(key);
-    }
-
-    if (refresh) {
-      invalidate(key);
-    }
-
-    T? data;
-    Function? action;
-
-    await storage.ready;
-
-    if (caches[key]?.latest == null ||
-        DateTime.now().difference(caches[key]!.latest!) >
-            caches[key]!.interval) {
-      caches[key]!.latest = DateTime.now();
-
-      if (toJson != null || caches[key]!.toJson != null) {
-        action = (T value) async {
-          dynamic json =
-              toJson == null ? caches[key]!.toJson!(value) : toJson(value);
-
-          _convertDates(Map<String, dynamic>? json) {
-            json?.forEach((key, value) {
-              if (value is DateTime) {
-                json[key] = "DATECONV--" + toDateTimeStringDefault(value);
-              } else if (value is Timestamp) {
-                json[key] =
-                    "DATECONV--" + toDateTimeStringDefault(value.toDate());
-              } else if (value is Map) {
-                json[key] = _convertDates(json[key]);
-              } else if (value is List) {
-                json[key] = json[key].map((m) => _convertDates(m)).toList();
-              }
-            });
-            return json;
-          }
-
-          if (json is List) {
-            json = json.map((e) => _convertDates(e)).toList();
-          } else {
-            json = _convertDates(json);
-          }
-
-          try {
-            await storage.setItem(key, json);
-          } catch (e, stackTrace) {
-            print(e.toString());
-            print(stackTrace.toString());
-          }
-        };
-      }
-    } else {
-      if (fromJson != null || caches[key]!.fromJson != null) {
-        dynamic result = await storage.getItem(key);
-
-        _reconvertDates(Map<String, dynamic>? json) {
-          if (json == null) return null;
-          json.forEach((key, value) {
-            if (value is Map) {
-              json[key] = _reconvertDates(json[key]);
-            } else if (value is List) {
-              json[key] = json[key].map((m) => _reconvertDates(m)).toList();
-            } else if (value?.toString().contains("DATECONV--") == true) {
-              json[key] = Timestamp.fromDate(fromDateTimeString(
-                  value!.toString().replaceAll("DATECONV--", "")));
-            }
-          });
-          return json;
-        }
-
-        if (result is List) {
-          result = result.map((e) => _reconvertDates(e)).toList();
-        } else {
-          result = _reconvertDates(result);
-        }
-
-        data = fromJson == null
-            ? caches[key]!.fromJson!(result)
-            : fromJson(result);
-      }
-    }
-
-    return FireblazeCachePrepare<T>(action: action, data: data);
   }
 }

@@ -152,7 +152,7 @@ class FirestoreRepository<T extends Model> {
   storeMultiple(List values) async {
     List chunkValues = chunk(values, 500);
 
-    chunkValues.forEach((chunkValue) async {
+    for (var chunkValue in chunkValues) {
       WriteBatch batch = instance.batch();
 
       chunkValue.each((data) {
@@ -161,7 +161,7 @@ class FirestoreRepository<T extends Model> {
       });
 
       await batch.commit();
-    });
+    }
   }
 
   Future<T?> update(String docID, Map<String, dynamic> data,
@@ -181,7 +181,6 @@ class FirestoreRepository<T extends Model> {
             MapEntry(key, value is String && value.isEmpty ? null : value)));
       }
     }
-
 
     return this.find(docID);
   }
@@ -213,11 +212,13 @@ class FirestoreRepository<T extends Model> {
   }
 
   _deleteWhere() async {
-    if (query == null) throw new EmptySnapshotException();
+    if (query == null) throw EmptySnapshotException();
 
     List<T?> items = (await this.get());
 
-    items.forEach((doc) => (doc?.id != null ? this.delete(doc?.id) : null));
+    for (var doc in items) {
+      (doc?.id != null ? this.delete(doc?.id) : null);
+    }
   }
 
   Future<int> count({bool currentQuery = false}) async {
@@ -296,16 +297,16 @@ class FirestoreRepository<T extends Model> {
 
   Future<List<T?>> get() async {
     if (query == null) {
-      return throw new EmptySnapshotException();
+      return throw EmptySnapshotException();
     }
 
     try {
-      Query _query = query!;
+      Query getQuery = query!;
 
       QuerySnapshot<T?> data = await _refQueryWithConverter(
               (softDeletes && !queryHasParameter("deletedAt")
-                  ? _query.where("deletedAt", isNull: true)
-                  : _query))
+                  ? getQuery.where("deletedAt", isNull: true)
+                  : getQuery))
           .get();
       _reset();
       return data.docs.map((e) => e.data()).toList();
@@ -316,14 +317,14 @@ class FirestoreRepository<T extends Model> {
 
   Stream<QuerySnapshot<Object?>> snapshots() {
     if (query == null) {
-      return throw new EmptySnapshotException();
+      return throw EmptySnapshotException();
     }
 
     try {
-      Query _query = query!;
+      Query baseQuery = query!;
 
       Stream<QuerySnapshot<Object?>> querySnapshot =
-          _refQueryWithConverter(_query).snapshots();
+          _refQueryWithConverter(baseQuery).snapshots();
       _reset();
       return querySnapshot;
     } catch (e) {
