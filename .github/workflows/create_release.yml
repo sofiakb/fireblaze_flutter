@@ -62,7 +62,7 @@ jobs:
 
       - name: Edit pubspec.yaml version
         run: |
-          sed -i s/"version: $(grep 'version:' pubspec.yaml | awk '{print $2}' | tr -d "'")"/"version: ${{ needs.generate.outputs.gitTag }}"/g pubspec.yaml
+          sed -i s/"version: $(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | tr -d "'")"/"version: ${{ needs.generate.outputs.gitTag }}"/g pubspec.yaml
       - name: Commit and push changes
         run: |
           (git config --global user.email "contact.sofiakb+gh_action@gmail.com"
