@@ -55,6 +55,10 @@ class FireblazeCache {
 
       if (toJson != null || caches[key]!.toJson != null) {
         action = (T value) async {
+          if (caches[key]!.toJson == null && toJson == null) {
+            return;
+          }
+
           dynamic json =
               toJson == null ? caches[key]?.toJson!(value) : toJson(value);
 
