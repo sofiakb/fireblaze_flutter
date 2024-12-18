@@ -67,6 +67,11 @@ class FirestoreRepository<T extends Model> {
     return this;
   }
 
+  FirestoreRepository<T> whereFilter(Filter filter) {
+    this.query = _query().where(filter);
+    return this;
+  }
+
   Future<T?> find(String? docID) async => docID?.isNotEmpty == true
       ? (await _refDocumentReferenceWithConverter(collection.doc(docID)).get())
           .data()
