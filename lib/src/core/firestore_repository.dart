@@ -26,7 +26,7 @@ class FirestoreRepository<T extends Model> {
     _collectionReference = collection;
   }
 
-  Future<List<T?>> all() {
+  Future<List<T>> all() {
     query = collection;
     return this.get();
   }
@@ -219,10 +219,10 @@ class FirestoreRepository<T extends Model> {
   _deleteWhere() async {
     if (query == null) throw EmptySnapshotException();
 
-    List<T?> items = (await this.get());
+    List<T> items = (await this.get());
 
     for (var doc in items) {
-      (doc?.id != null ? this.delete(doc?.id) : null);
+      (doc.id != null ? this.delete(doc.id) : null);
     }
   }
 
@@ -300,7 +300,7 @@ class FirestoreRepository<T extends Model> {
   Map<String, Object?> _toFirestore(T? object, SetOptions? options) =>
       object != null ? prepareData(toJson(object)).data : {};
 
-  Future<List<T?>> get() async {
+  Future<List<T>> get() async {
     if (query == null) {
       return throw EmptySnapshotException();
     }
@@ -314,7 +314,7 @@ class FirestoreRepository<T extends Model> {
                   : getQuery))
           .get();
       _reset();
-      return data.docs.map((e) => e.data()).toList();
+      return data.docs.map((e) => e.data()).nonNulls.toList();
     } catch (e) {
       rethrow;
     }
