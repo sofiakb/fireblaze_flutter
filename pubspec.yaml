@@ -1,21 +1,21 @@
 name: sofiakb_fireblaze_flutter
 description: The packages allows to easily manage firebase requests.
 maintainer: Sofiane Akbly
-version: 2.1.1
+version: 2.2.0-dev.1
 
 environment:
-  sdk: ">3.4.0 <4.0.0"
+  sdk: ">3.9.0 <4.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
   # Firebase / google dependencies
-  cloud_firestore: ^5.5.1
-  firebase_storage: ^12.3.7
+  cloud_firestore: ^6.0.2
+  firebase_storage: ^13.0.2
 
   # other dependencies
   collection: ^1.18.0
-  intl: ^0.20.1
+  intl: ^0.20.2
   localstorage: ^4.0.1+4
   mime: ^2.0.0
   universal_io: ^2.2.2
@@ -25,6 +25,6 @@ scripts:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^5.0.0
-  mockito: ^5.4.4
-  firebase_storage_mocks: ^0.7.0
+  flutter_lints: ^6.0.0
+  mockito: ^5.5.1
+  firebase_storage_mocks: ^0.8.0+1

@@ -9,7 +9,7 @@ Timestamp toTimestamp(dynamic dateString) {
   return Timestamp.fromDate(dateValue);
 }
 
-fromDateTimeString(String? dateTimeString) =>
+DateTime? fromDateTimeString(String? dateTimeString) =>
     dateTimeString == null ? null : DateTime.parse(dateTimeString);
 
 String toDateTimeStringDefault(DateTime date) =>

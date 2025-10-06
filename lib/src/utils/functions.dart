@@ -27,7 +27,7 @@ Map<String, dynamic>? reconvertDates(Map<String, dynamic>? json) {
       json[key] = json[key].map((m) => reconvertDates(m)).toList();
     } else if (value?.toString().contains("DATECONV--") == true) {
       json[key] = Timestamp.fromDate(fromDateTimeString(
-          value!.toString().replaceAll("DATECONV--", "")));
+          value!.toString().replaceAll("DATECONV--", ""))!);
     }
   });
   return json;
