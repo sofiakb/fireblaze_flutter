@@ -18,17 +18,18 @@ class FirestoreRepository<T extends Model> {
   final T Function(Map<String, dynamic> json) fromJson;
   final Map<String, dynamic> Function(T) toJson;
 
-  FirestoreRepository(
-      {required this.collection,
-      required this.fromJson,
-      required this.toJson,
-      this.softDeletes = false}) {
+  FirestoreRepository({
+    required this.collection,
+    required this.fromJson,
+    required this.toJson,
+    this.softDeletes = false,
+  }) {
     _collectionReference = collection;
   }
 
   Future<List<T>> all() {
     query = collection;
-    return this.get();
+    return get();
   }
 
   FirestoreRepository<T> where({
@@ -47,7 +48,7 @@ class FirestoreRepository<T extends Model> {
     List<Object?>? whereNotIn,
     bool? isNull,
   }) {
-    this.query = _query().where(
+    query = _query().where(
       column,
       isEqualTo: isEqualTo ?? (operator == '==' ? value : null),
       isNotEqualTo: isNotEqualTo ?? (operator == '!=' ? value : null),
@@ -68,13 +69,14 @@ class FirestoreRepository<T extends Model> {
   }
 
   FirestoreRepository<T> whereFilter(Filter filter) {
-    this.query = _query().where(filter);
+    query = _query().where(filter);
     return this;
   }
 
   Future<T?> find(String? docID) async => docID?.isNotEmpty == true
-      ? (await _refDocumentReferenceWithConverter(collection.doc(docID)).get())
-          .data()
+      ? (await _refDocumentReferenceWithConverter(
+          collection.doc(docID),
+        ).get()).data()
       : null;
 
   Future<T?> findOneByID(String? docID) async => find(docID);
@@ -85,9 +87,9 @@ class FirestoreRepository<T extends Model> {
   Future<T?> doc(String? docID, {bool withSoftDelete = false}) async {
     if (docID?.isNotEmpty == false) return null;
 
-    return _refDocumentReferenceWithConverter(collection.doc(docID))
-        .get()
-        .then((DocumentSnapshot<T?> value) {
+    return _refDocumentReferenceWithConverter(
+      collection.doc(docID),
+    ).get().then((DocumentSnapshot<T?> value) {
       DocumentSnapshot<T?> documentData = value;
       return documentData.exists &&
               softDeletes &&
@@ -121,9 +123,12 @@ class FirestoreRepository<T extends Model> {
     data['id'] = documentReference.id;
 
     return PreparedData(
-        documentReference: documentReference,
-        data: data.map((key, value) =>
-            MapEntry(key, value is String && value.isEmpty ? null : value)));
+      documentReference: documentReference,
+      data: data.map(
+        (key, value) =>
+            MapEntry(key, value is String && value.isEmpty ? null : value),
+      ),
+    );
   }
 
   Future<T?> store(dynamic data) async {
@@ -136,8 +141,10 @@ class FirestoreRepository<T extends Model> {
   Future<T?> updateOrCreate(dynamic data) async {
     PreparedData prepared = prepareData(data);
 
-    await update(prepared.documentReference.id, prepared.data)
-        .onError((error, stackTrace) async {
+    await update(prepared.documentReference.id, prepared.data).onError((
+      error,
+      stackTrace,
+    ) async {
       await store(data);
       return null;
     });
@@ -154,14 +161,14 @@ class FirestoreRepository<T extends Model> {
     return fromJson(prepared.data);
   }
 
-  storeMultiple(List values) async {
+  Future<void> storeMultiple(List values) async {
     List chunkValues = chunk(values, 500);
 
     for (var chunkValue in chunkValues) {
       WriteBatch batch = instance.batch();
 
       chunkValue.each((data) {
-        PreparedData prepared = this.prepareData(data);
+        PreparedData prepared = prepareData(data);
         batch.set(prepared.documentReference, prepared.data);
       });
 
@@ -169,8 +176,11 @@ class FirestoreRepository<T extends Model> {
     }
   }
 
-  Future<T?> update(String docID, Map<String, dynamic> data,
-      {bool force = false}) async {
+  Future<T?> update(
+    String docID,
+    Map<String, dynamic> data, {
+    bool force = false,
+  }) async {
     if (docID.isEmpty) return null;
 
     DocumentReference? documentReference = this.documentReference(docID);
@@ -179,19 +189,27 @@ class FirestoreRepository<T extends Model> {
       data['updatedAt'] = FirestoreRepository._now();
       data.remove("createdAt");
       if (force) {
-        await documentReference.set(data.map((key, value) =>
-            MapEntry(key, value is String && value.isEmpty ? null : value)));
+        await documentReference.set(
+          data.map(
+            (key, value) =>
+                MapEntry(key, value is String && value.isEmpty ? null : value),
+          ),
+        );
       } else {
-        await documentReference.update(data.map((key, value) =>
-            MapEntry(key, value is String && value.isEmpty ? null : value)));
+        await documentReference.update(
+          data.map(
+            (key, value) =>
+                MapEntry(key, value is String && value.isEmpty ? null : value),
+          ),
+        );
       }
     }
 
-    return this.find(docID);
+    return find(docID);
   }
 
   Future<bool> delete(String? docID) async {
-    if (docID == null || docID.isEmpty) return this._deleteWhere();
+    if (docID == null || docID.isEmpty) return _deleteWhere();
 
     DocumentReference? documentReference = this.documentReference(docID);
 
@@ -204,7 +222,7 @@ class FirestoreRepository<T extends Model> {
   }
 
   Future<bool> softDelete(String? docID) async {
-    if (docID == null || docID.isEmpty) return this._deleteWhere();
+    if (docID == null || docID.isEmpty) return _deleteWhere();
 
     DocumentReference? documentReference = this.documentReference(docID);
 
@@ -216,14 +234,15 @@ class FirestoreRepository<T extends Model> {
     return false;
   }
 
-  _deleteWhere() async {
+  Future<bool> _deleteWhere() async {
     if (query == null) throw EmptySnapshotException();
 
-    List<T> items = (await this.get());
+    List<T> items = (await get());
+    List<bool> results = await Future.wait(
+      items.where((doc) => doc.id != null).map((doc) => delete(doc.id)),
+    );
 
-    for (var doc in items) {
-      (doc.id != null ? this.delete(doc.id) : null);
-    }
+    return results.every((v) => v == true);
   }
 
   Future<int> count({bool currentQuery = false}) async {
@@ -231,7 +250,7 @@ class FirestoreRepository<T extends Model> {
 
     int count = 0;
 
-    Query<Object?> query = (currentQuery ? _query() : this.collection)
+    Query<Object?> query = (currentQuery ? _query() : collection)
         .orderBy('id', descending: true)
         .limit(limit);
 
@@ -248,51 +267,56 @@ class FirestoreRepository<T extends Model> {
   }
 
   FirestoreRepository<T> orderBy(String fieldPath, {bool descending = false}) {
-    this.query = _query().orderBy(fieldPath, descending: descending);
+    query = _query().orderBy(fieldPath, descending: descending);
     return this;
   }
 
   FirestoreRepository<T> limit([int limit = 1]) {
-    this.query = _query().limit(limit);
+    query = _query().limit(limit);
     return this;
   }
 
   FirestoreRepository<T> startAt(startAt) {
-    this.query = _query().startAt(startAt is List ? startAt : [startAt]);
+    query = _query().startAt(startAt is List ? startAt : [startAt]);
     return this;
   }
 
   FirestoreRepository<T> endAt(endAt) {
-    this.query = _query().endAt(endAt is List ? endAt : [endAt]);
+    query = _query().endAt(endAt is List ? endAt : [endAt]);
     return this;
   }
 
   FirestoreRepository<T> startAfter(startAfter) {
-    this.query =
-        _query().startAfter(startAfter is List ? startAfter : [startAfter]);
+    query = _query().startAfter(startAfter is List ? startAfter : [startAfter]);
     return this;
   }
 
   FirestoreRepository<T> limitToLast([int limit = 1]) {
-    this.query = _query().limitToLast(limit);
+    query = _query().limitToLast(limit);
     return this;
   }
 
-  Future<T?> first() async => (await this.limit(1).get()).firstOrNull;
+  Future<T?> first() async => (await limit(1).get()).firstOrNull;
 
-  queryHasParameter(String parameter) =>
+  bool queryHasParameter(String parameter) =>
       query == null ? false : query!.parameters.containsKey(parameter);
 
   Query<T?> _refQueryWithConverter(Query query) => query.withConverter(
-      fromFirestore: _fromFirestoreSnapshot, toFirestore: _toFirestore);
+    fromFirestore: _fromFirestoreSnapshot,
+    toFirestore: _toFirestore,
+  );
 
   DocumentReference<T?> _refDocumentReferenceWithConverter(
-          DocumentReference query) =>
-      query.withConverter(
-          fromFirestore: _fromFirestoreSnapshot, toFirestore: _toFirestore);
+    DocumentReference query,
+  ) => query.withConverter(
+    fromFirestore: _fromFirestoreSnapshot,
+    toFirestore: _toFirestore,
+  );
 
   T? _fromFirestoreSnapshot(
-      DocumentSnapshot snapshot, SnapshotOptions? options) {
+    DocumentSnapshot snapshot,
+    SnapshotOptions? options,
+  ) {
     Map<String, dynamic>? data = snapshot.data() as Map<String, dynamic>?;
     return snapshot.exists && data != null ? fromJson(data) : null;
   }
@@ -309,10 +333,10 @@ class FirestoreRepository<T extends Model> {
       Query getQuery = query!;
 
       QuerySnapshot<T?> data = await _refQueryWithConverter(
-              (softDeletes && !queryHasParameter("deletedAt")
-                  ? getQuery.where("deletedAt", isNull: true)
-                  : getQuery))
-          .get();
+        (softDeletes && !queryHasParameter("deletedAt")
+            ? getQuery.where("deletedAt", isNull: true)
+            : getQuery),
+      ).get();
       _reset();
       return data.docs.map((e) => e.data()).nonNulls.toList();
     } catch (e) {
@@ -328,8 +352,9 @@ class FirestoreRepository<T extends Model> {
     try {
       Query baseQuery = query!;
 
-      Stream<QuerySnapshot<Object?>> querySnapshot =
-          _refQueryWithConverter(baseQuery).snapshots();
+      Stream<QuerySnapshot<Object?>> querySnapshot = _refQueryWithConverter(
+        baseQuery,
+      ).snapshots();
       _reset();
       return querySnapshot;
     } catch (e) {
@@ -337,13 +362,13 @@ class FirestoreRepository<T extends Model> {
     }
   }
 
-  _reset() {
+  FirestoreRepository<T> _reset() {
     query = null;
     collection = _collectionReference!;
     return this;
   }
 
-  Query _query() => (this.query ?? this.collection);
+  Query _query() => (query ?? collection);
 
-  static _now() => Timestamp.now().toDate();
+  static DateTime _now() => Timestamp.now().toDate();
 }
