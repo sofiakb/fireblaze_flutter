@@ -33,7 +33,7 @@ Map<String, dynamic>? reconvertDates(Map<String, dynamic>? json) {
   return json;
 }
 
-Object toEncodable(object) =>
+Object toEncodable(dynamic object) =>
     (object is Iterable
         ? object
         .map((e) => convertDates(e as Map<String, dynamic>))

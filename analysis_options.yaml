@@ -31,6 +31,7 @@ analyzer:
   exclude:
     - "**/*.g.dart"
     - "**/*.freezed.dart"
+    - build/**
   errors:
     invalid_annotation_target: ignore
     # This list is derived from the list of all available lints located at

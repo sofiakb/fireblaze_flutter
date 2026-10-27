@@ -276,17 +276,17 @@ class FirestoreRepository<T extends Model> {
     return this;
   }
 
-  FirestoreRepository<T> startAt(startAt) {
+  FirestoreRepository<T> startAt(dynamic startAt) {
     query = _query().startAt(startAt is List ? startAt : [startAt]);
     return this;
   }
 
-  FirestoreRepository<T> endAt(endAt) {
+  FirestoreRepository<T> endAt(dynamic endAt) {
     query = _query().endAt(endAt is List ? endAt : [endAt]);
     return this;
   }
 
-  FirestoreRepository<T> startAfter(startAfter) {
+  FirestoreRepository<T> startAfter(dynamic startAfter) {
     query = _query().startAfter(startAfter is List ? startAfter : [startAfter]);
     return this;
   }
