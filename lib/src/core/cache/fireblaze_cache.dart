@@ -1,7 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:localstorage/localstorage.dart';
+import 'package:localstorage/localstorage.dart' as ls;
 import 'package:sofiakb_fireblaze_flutter/src/utils/functions.dart';
 
 import 'fireblaze_cache_prepare.dart';
@@ -18,15 +19,26 @@ class FireblazeCache {
 
   final Map<String, FireblazeCacheSettings> caches = {};
 
+  /// Initialisation unique du stockage global de localstorage (>= 5).
+  static Future<void>? _storageInit;
+
   void add(String key, [FireblazeCacheSettings? settings]) {
-    settings ??=
-        FireblazeCacheSettings(localStorage: LocalStorage("$prefix$key"));
+    settings ??= FireblazeCacheSettings();
     caches[key] = caches[key] == null
         ? settings
         : settings.copyWith(
-            localStorage: caches[key]!.storage,
+            localStorage: caches[key]!.localStorage,
             latest: caches[key]!.latest,
           );
+  }
+
+  /// Clé de l'entrée dans le stockage, partagé entre tous les caches.
+  String storageKey(String key) => "$prefix$key";
+
+  Future<void> _ensureStorage(FireblazeCacheSettings settings) async {
+    if (settings.localStorage != null) return;
+    _storageInit ??= ls.initLocalStorage();
+    await _storageInit;
   }
 
   bool hasKey(String key) => caches.containsKey(key);
@@ -46,7 +58,7 @@ class FireblazeCache {
     T? data;
     Function? action;
 
-    await caches[key]?.storage?.ready;
+    await _ensureStorage(caches[key]!);
 
     if (caches[key]?.latest == null ||
         DateTime.now().difference(caches[key]!.latest!).inMinutes >
@@ -65,16 +77,17 @@ class FireblazeCache {
           json = toEncodable(json);
 
           try {
-            await caches[key]?.storage?.setItem(
-                key,
-                json,
-                (object) =>
-                    (object is Iterable
-                        ? object
-                            .map((e) => convertDates(e as Map<String, dynamic>))
-                            .toList()
-                        : convertDates(object as Map<String, dynamic>)) ??
-                    {});
+            caches[key]!.storage.setItem(
+                storageKey(key),
+                jsonEncode(json,
+                    toEncodable: (object) =>
+                        (object is Iterable
+                            ? object
+                                .map((e) =>
+                                    convertDates(e as Map<String, dynamic>))
+                                .toList()
+                            : convertDates(object as Map<String, dynamic>)) ??
+                        {}));
           } catch (e, stackTrace) {
             debugPrint(e.toString());
             debugPrintStack(stackTrace: stackTrace);
@@ -83,7 +96,8 @@ class FireblazeCache {
       }
     } else {
       if (fromJson != null || caches[key]!.fromJson != null) {
-        dynamic result = await caches[key]?.storage?.getItem(key);
+        final String? raw = caches[key]!.storage.getItem(storageKey(key));
+        dynamic result = raw == null ? null : jsonDecode(raw);
 
         if (result is List) {
           result = result.map((e) => reconvertDates(e)).toList();
